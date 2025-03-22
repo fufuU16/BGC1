@@ -1,25 +1,26 @@
+
 <?php
 session_start();
 include 'db_connection.php'; // Ensure this file correctly sets up the database connection
 
-// Handle delete request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_driver_id'])) {
-    $driverIdToDelete = intval($_POST['delete_driver_id']);
-    $deleteQuery = "DELETE FROM drivers WHERE driver_id = ?";
-    $stmt = $conn->prepare($deleteQuery);
-    $stmt->bind_param("i", $driverIdToDelete);
+// Handle archive request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_driver_id'])) {
+    $driverIdToArchive = intval($_POST['archive_driver_id']);
+    $archiveQuery = "UPDATE drivers SET archived = 1 WHERE driver_id = ?";
+    $stmt = $conn->prepare($archiveQuery);
+    $stmt->bind_param("i", $driverIdToArchive);
     if ($stmt->execute()) {
-        $_SESSION['message'] = "Driver deleted successfully.";
+        $_SESSION['message'] = "Driver archived successfully.";
     } else {
-        $_SESSION['message'] = "Error deleting driver: " . $conn->error;
+        $_SESSION['message'] = "Error archiving driver: " . $conn->error;
     }
     $stmt->close();
     header("Location: drivers.php");
     exit();
 }
 
-// Query to fetch driver data
-$driversQuery = "SELECT driver_id, name, email, rfid_tag FROM drivers ORDER BY name ASC";
+// Query to fetch driver data excluding archived drivers
+$driversQuery = "SELECT driver_id, name, email, rfid_tag FROM drivers WHERE archived = 0 ORDER BY name ASC";
 $driversResult = $conn->query($driversQuery);
 
 // Check for query errors
@@ -134,7 +135,10 @@ $conn->close();
                         <td><?php echo htmlspecialchars($driver['name']); ?></td>
                         <td><?php echo htmlspecialchars($driver['email']); ?></td>
                         <td><?php echo htmlspecialchars($driver['rfid_tag']); ?></td>
-                        <td><button onclick="confirmDelete(<?php echo htmlspecialchars($driver['driver_id']); ?>)">Delete</button></td>
+                        <td>
+                            <button onclick="confirmArchive(<?php echo htmlspecialchars($driver['driver_id']); ?>)">Archive</button>
+                            <button onclick="editDriver(<?php echo htmlspecialchars($driver['driver_id']); ?>)">Edit</button>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
@@ -149,22 +153,27 @@ $conn->close();
 
 <script src="drivers.js"></script>
 <script>
-    function confirmDelete(driverId) {
-        if (confirm("Are you sure you want to delete this driver?")) {
-            // Create a form to submit the delete request
+    function confirmArchive(driverId) {
+        if (confirm("Are you sure you want to archive this driver?")) {
+            // Create a form to submit the archive request
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '';
 
             const input = document.createElement('input');
             input.type = 'hidden';
-            input.name = 'delete_driver_id';
+            input.name = 'archive_driver_id';
             input.value = driverId;
 
             form.appendChild(input);
             document.body.appendChild(form);
             form.submit();
         }
+    }
+
+    function editDriver(driverId) {
+        // Redirect to an edit page or open a modal for editing
+        window.location.href = `edit_driver.php?driver_id=${driverId}`;
     }
 </script>
 </body>
